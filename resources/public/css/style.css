@@ -8,7 +8,7 @@
     float: left;
 }
 	/* flip the pane when hovered */
-	.flip-container:hover .flipper, .flip-container.hover .flipper {
+	.flip-container.hover .flipper {
 		transform: rotateY(180deg);
 	}
 

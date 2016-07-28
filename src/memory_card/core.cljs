@@ -66,12 +66,15 @@
     [:span {:class "number"} (rankify r)]
     [:span (suit s)]]])
 
-(rum/defc flip-card [back]
-  [:div {:class "flip-container"}
-   [:div {:class "flipper"}
-    [:div {:class "front"}
-     [:div {:class "card"}]]
-    [:div {:class "back"} back]]])
+(rum/defcs flip-card < (rum/local false ::george)
+  [state back]
+  (let [local-atom (::george state)]
+    [:div {:class ["flip-container" (when @local-atom "hover")]
+          :on-click (fn [_] (swap! local-atom not))}
+    [:div {:class "flipper"}
+     [:div {:class "front"}
+      [:div {:class "card"}]]
+     [:div {:class "back"} back]]]))
 
 (rum/defc field []
   (let [crds (for [s (mapv first suits)
@@ -79,13 +82,13 @@
                           (map keyword)
                           (into [:king :queen :jack :ace]))]
             (flip-card (playing-card r s)))]
-    (apply (partial vector :div) crds)))
+    (apply (partial vector :div {:id "table"}) crds)))
 
 (enable-console-print!)
 
 ;; define your app data so that it doesn't get over-written on reload
 
-(defonce app-state (atom {:text "good Murk."}))
+(defonce app-state (atom {:flipped [[]]}))
 
 (defn on-js-reload []
   (rum/mount (field) (.getElementById js/document "app"))
