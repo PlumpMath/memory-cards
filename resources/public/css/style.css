@@ -4,7 +4,8 @@
 /******************* https://davidwalsh.name/css-flip *****************/
 /* entire container, keeps perspective */
 .flip-container {
-	perspective: 1000px;
+    perspective: 1000px;
+    float: left;
 }
 	/* flip the pane when hovered */
 	.flip-container:hover .flipper, .flip-container.hover .flipper {
@@ -12,8 +13,8 @@
 	}
 
 .flip-container, .front, .back {
-	width: 320px;
-	height: 480px;
+	width: 215px;
+	height: 295px;
 }
 
 /* flip speed goes here */
