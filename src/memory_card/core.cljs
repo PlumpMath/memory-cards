@@ -107,20 +107,14 @@
 
 (rum/defc flip-card < rum/reactive
   [r s n]
-  (let [ruuid (str (random-uuid))
-        sha-1 (sha1-hex (str r s n))
-        ]
+  (let [sha-1 (sha1-hex (str r s n))]
     [:div {:key sha-1
            :class ["flip-container" (let [fl (rum/react app-state)]
                                       (when (or (contains? (:flipped fl) sha-1)
                                                 (contains? (:matched fl) sha-1))
                                         "hover"))]
            :on-click (fn [_]
-                       #_(prn (:flipped @app-state))
                        (cond
-                         (>= (count (:flipped @app-state)) 3)
-                         (swap! app-state update-in [:flipped] empty)
-
                          (and (not (contains? (:flipped @app-state) sha-1))
                               (contains? (:flipped @app-state) [r s]))
                          (do
@@ -129,11 +123,13 @@
                              (swap! app-state update-in [:flipped] empty)
                              (swap! app-state update-in [:matched] merge sha-1)
                              (swap! app-state update-in [:matched] merge m-c)))
-                         
                          :else (do
                                  (swap! app-state update-in [:flipped] merge sha-1)
-                                 (swap! app-state update-in [:flipped] merge [r s])))
-                       #_(prn (:matched @app-state)))}
+                                 (swap! app-state update-in [:flipped] merge [r s])
+                                 (js/setTimeout ;;#(clicky r s sha-1)
+                                  #(when (> (count (:flipped @app-state)) 2)
+                                     (swap! app-state update-in [:flipped] empty))
+                                  1500))))}
      [:div.flipper
       [:div.front
        [:div.card]]
@@ -165,11 +161,19 @@
 
 (enable-console-print!)
 
+
+(defn restart-play []
+  (reset! app-state {:flipped #{} :matched #{} :turns [0]})
+  (rum/mount (play-field 20) (.getElementById js/document "table")))
+
 (defn on-js-reload []
   ;; (rum/mount (whole-deck) (.getElementById js/document "table"))
-  (rum/mount (play-field 20) (.getElementById js/document "table"))
+
+  (restart-play)
   
   ;; optionally touch your app-state to force rerendering depending on
   ;; your application
   ;; (swap! app-state update-in [:__figwheel_counter] inc)
-)
+  )
+
+(restart-play)
