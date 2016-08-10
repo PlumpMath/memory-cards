@@ -1,12 +1,51 @@
 (ns memory-card.core
   (:require [rum.core :as rum]
+            [cljs-uuid-utils.core :as uuid]
             [clojure.string :refer [replace capitalize]]
+            [goog.crypt :as gcrypt]
+            [goog.crypt.Sha1 :as Sha1]
             [goog.string :as gstring]))
+
+
+(defn string->bytes [s]
+  (gcrypt/stringToUtf8ByteArray s))  ;; must be utf8 byte array
+
+(defn bytes->hex
+  "convert bytes to hex"
+  [bytes-in]
+  (gcrypt/byteArrayToHex bytes-in))
+
+(defn hash-bytes [digester bytes-in]
+  (do
+    (.update digester bytes-in)
+    (.digest digester)))
+
+(defn sha1-
+  "convert bytes to sha1 bytes"
+  [bytes-in]
+  (hash-bytes (goog.crypt.Sha1.) bytes-in))
+
+(defn sha1-bytes
+  "convert utf8 string to md5 byte array"
+  [string]
+  (sha1- (string->bytes string)))
+
+(defn sha1-hex [string]
+  "convert utf8 string to sha1 hex string"
+  (bytes->hex (sha1-bytes string)))
+
+
+;; define your app data so that it doesn't get over-written on reload
+;; [:r :s]
+(defonce app-state (atom {:flipped #{}
+                          :matched #{}
+                          :turns [0]}))
 
 (def suits {:heart "&#9829;"
             :diamond "&#9830;"
             :spade "&#9824;"
             :club "&#9827;"})
+
 
 (defn suit [s]
   (gstring/unescapeEntities (suits s)))
@@ -21,12 +60,12 @@
   (-> k name (replace #"-" "_")))
 
 (rum/defc label [text]
-  [:div {:class "label"} text])
+  [:div.label text])
 
 (rum/defc pcf-placement [l s]
   [:span {:class ["suit" (kw->class l)]} (suit s)])
 
-(rum/defc playing-card-face [r s]
+(defn playing-card-face [r s]
   (let [r1 [(pcf-placement :middle-center s)]
         r2 [(pcf-placement :top-center s)
              (pcf-placement :bottom-center s)]
@@ -56,42 +95,79 @@
            :queen r1 :king r1 :ace r1 :jack r1}]
     (apply (partial vector :div) (get m r))))
 
-(rum/defc playing-card [r s]
+(defn playing-card [r s]
   [:div {:class ["card" (name s) (name r)]}
    [:div {:class ["corner" "top"]}
-    [:span {:class "number"} (rankify r)]
+    [:span.number (rankify r)]
     [:span (suit s)]]
    (playing-card-face r s)
    [:div {:class ["corner" "bottom"]}
-    [:span {:class "number"} (rankify r)]
+    [:span.number (rankify r)]
     [:span (suit s)]]])
 
-(rum/defcs flip-card < (rum/local false ::george)
-  [state back]
-  (let [local-atom (::george state)]
-    [:div {:class ["flip-container" (when @local-atom "hover")]
-          :on-click (fn [_] (swap! local-atom not))}
-    [:div {:class "flipper"}
-     [:div {:class "front"}
-      [:div {:class "card"}]]
-     [:div {:class "back"} back]]]))
+(rum/defc flip-card < rum/reactive
+  [r s n]
+  (let [ruuid (str (random-uuid))
+        sha-1 (sha1-hex (str r s n))
+        ]
+    [:div {:key sha-1
+           :class ["flip-container" (let [fl (rum/react app-state)]
+                                      (when (or (contains? (:flipped fl) sha-1)
+                                                (contains? (:matched fl) sha-1))
+                                        "hover"))]
+           :on-click (fn [_]
+                       #_(prn (:flipped @app-state))
+                       (cond
+                         (>= (count (:flipped @app-state)) 3)
+                         (swap! app-state update-in [:flipped] empty)
 
-(rum/defc field []
-  (let [crds (for [s (mapv first suits)
-                   r (->> (range 1 11) reverse (map str)
-                          (map keyword)
-                          (into [:king :queen :jack :ace]))]
-            (flip-card (playing-card r s)))]
-    (apply (partial vector :div {:id "table"}) crds)))
+                         (and (not (contains? (:flipped @app-state) sha-1))
+                              (contains? (:flipped @app-state) [r s]))
+                         (do
+                           (swap! app-state update-in [:flipped] disj [r s])
+                           (let [m-c (first (:flipped @app-state))]
+                             (swap! app-state update-in [:flipped] empty)
+                             (swap! app-state update-in [:matched] merge sha-1)
+                             (swap! app-state update-in [:matched] merge m-c)))
+                         
+                         :else (do
+                                 (swap! app-state update-in [:flipped] merge sha-1)
+                                 (swap! app-state update-in [:flipped] merge [r s])))
+                       #_(prn (:matched @app-state)))}
+     [:div.flipper
+      [:div.front
+       [:div.card]]
+      [:div.back (playing-card r s)]]]))
+
+(defn whole-card-deck []
+  (for [s (mapv first suits)
+        r (->> (range 1 11) reverse (map str)
+               (map keyword)
+               (into [:king :queen :jack :ace]))]
+    [s r]))
+
+(rum/defc whole-deck []
+  (apply (partial vector :div#cards) (whole-card-deck)))
+
+
+(rum/defc play-field [size]
+  (let [d-count (/ size 2)
+        deck (whole-card-deck)
+        fln (comp vec flatten)
+        match-deck (->> deck
+                        shuffle
+                        (take d-count))
+        ddd (shuffle (interleave match-deck match-deck))
+        md-o (map-indexed (fn [n [s r]]
+                            (flip-card r s n))
+                          ddd)]
+    [:div#cards md-o]))
 
 (enable-console-print!)
 
-;; define your app data so that it doesn't get over-written on reload
-
-(defonce app-state (atom {:flipped [[]]}))
-
 (defn on-js-reload []
-  (rum/mount (field) (.getElementById js/document "app"))
+  ;; (rum/mount (whole-deck) (.getElementById js/document "table"))
+  (rum/mount (play-field 20) (.getElementById js/document "table"))
   
   ;; optionally touch your app-state to force rerendering depending on
   ;; your application
