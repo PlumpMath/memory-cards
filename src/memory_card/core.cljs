@@ -1,39 +1,8 @@
 (ns memory-card.core
   (:require [rum.core :as rum]
-            [cljs-uuid-utils.core :as uuid]
             [clojure.string :refer [replace capitalize]]
-            [goog.crypt :as gcrypt]
-            [goog.crypt.Sha1 :as Sha1]
+            [memory-card.crypto :refer [sha1-hex]]
             [goog.string :as gstring]))
-
-
-(defn string->bytes [s]
-  (gcrypt/stringToUtf8ByteArray s))  ;; must be utf8 byte array
-
-(defn bytes->hex
-  "convert bytes to hex"
-  [bytes-in]
-  (gcrypt/byteArrayToHex bytes-in))
-
-(defn hash-bytes [digester bytes-in]
-  (do
-    (.update digester bytes-in)
-    (.digest digester)))
-
-(defn sha1-
-  "convert bytes to sha1 bytes"
-  [bytes-in]
-  (hash-bytes (goog.crypt.Sha1.) bytes-in))
-
-(defn sha1-bytes
-  "convert utf8 string to md5 byte array"
-  [string]
-  (sha1- (string->bytes string)))
-
-(defn sha1-hex [string]
-  "convert utf8 string to sha1 hex string"
-  (bytes->hex (sha1-bytes string)))
-
 
 ;; define your app data so that it doesn't get over-written on reload
 ;; [:r :s]
@@ -142,10 +111,6 @@
                (into [:king :queen :jack :ace]))]
     [s r]))
 
-(rum/defc whole-deck []
-  (apply (partial vector :div#cards) (whole-card-deck)))
-
-
 (rum/defc play-field [size]
   (let [d-count (/ size 2)
         deck (whole-card-deck)
@@ -161,19 +126,16 @@
 
 (enable-console-print!)
 
-
 (defn restart-play []
   (reset! app-state {:flipped #{} :matched #{} :turns [0]})
   (rum/mount (play-field 20) (.getElementById js/document "table")))
 
 (defn on-js-reload []
-  ;; (rum/mount (whole-deck) (.getElementById js/document "table"))
-
   (restart-play)
-  
   ;; optionally touch your app-state to force rerendering depending on
   ;; your application
   ;; (swap! app-state update-in [:__figwheel_counter] inc)
   )
 
 (restart-play)
+
