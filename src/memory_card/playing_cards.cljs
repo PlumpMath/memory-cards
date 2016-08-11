@@ -62,3 +62,10 @@
    [:div {:class ["corner" "bottom"]}
     [:span.number (rankify r)]
     [:span (suit s)]]])
+
+(defn whole-card-deck []
+  (for [s (mapv first suits)
+        r (->> (range 2 11) reverse (map str)
+               (map keyword)
+               (into [:king :queen :jack :ace]))]
+    [s r]))

@@ -1,7 +1,7 @@
 (ns memory-card.core
   (:require [rum.core :as rum]
             [memory-card.crypto :refer [sha1-hex]]
-            [memory-card.playing-cards :refer [suits playing-card]]))
+            [memory-card.playing-cards :refer [suits playing-card whole-card-deck]]))
 
 ;; define your app data so that it doesn't get over-written on reload
 ;; [:r :s]
@@ -38,13 +38,6 @@
       [:div.front
        [:div.card]]
       [:div.back (playing-card r s)]]]))
-
-(defn whole-card-deck []
-  (for [s (mapv first suits)
-        r (->> (range 1 11) reverse (map str)
-               (map keyword)
-               (into [:king :queen :jack :ace]))]
-    [s r]))
 
 (rum/defc play-field [size]
   (let [d-count (/ size 2)
