@@ -17,7 +17,9 @@
       (-> r name first capitalize)
       (name r))))
 
-(defn kw->class [k]
+(defn kw->class
+  "turns keywords to HTML class name compatible string"
+  [k]
   (-> k name (replace #"-" "_")))
 
 (defn pcf-placement [l s]
@@ -64,7 +66,7 @@
     [:span (suit s)]]])
 
 (defn whole-card-deck []
-  (for [s (mapv first suits)
+  (for [s (keys suits)
         r (->> (range 2 11) reverse (map str)
                (map keyword)
                (into [:king :queen :jack :ace]))]

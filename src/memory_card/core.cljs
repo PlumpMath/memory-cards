@@ -1,6 +1,7 @@
 (ns memory-card.core
   (:require [rum.core :as rum]
             [memory-card.crypto :refer [sha1-hex]]
+            [memory-card.mahjong :refer [tiles tile]]
             [memory-card.playing-cards :refer [suits playing-card whole-card-deck]]))
 
 ;; define your app data so that it doesn't get over-written on reload
@@ -10,7 +11,7 @@
                           :turns [0]}))
 
 (rum/defc flip-card < rum/reactive
-  [r s n]
+  [s r n]
   (let [sha-1 (sha1-hex (str r s n))]
     [:div {:key sha-1
            :class ["flip-container" (let [fl (rum/react app-state)]
@@ -37,18 +38,19 @@
      [:div.flipper
       [:div.front
        [:div.card]]
-      [:div.back (playing-card r s)]]]))
+      [:div.back (tile s)]]]))
 
 (rum/defc play-field [size]
   (let [d-count (/ size 2)
-        deck (whole-card-deck)
+        deck (map vector (keys tiles))
+        ;; deck (whole-card-deck)
         fln (comp vec flatten)
         match-deck (->> deck
                         shuffle
                         (take d-count))
         ddd (shuffle (interleave match-deck match-deck))
         md-o (map-indexed (fn [n [s r]]
-                            (flip-card r s n))
+                            (flip-card s r n))
                           ddd)]
     [:div#cards md-o]))
 
