@@ -8,7 +8,7 @@
 ;; [:r :s]
 (defonce app-state (atom {:flipped #{}
                           :matched #{}
-                          :turns [0]}))
+                          :timer nil}))
 
 (rum/defc flip-card < rum/reactive
   [s r n]
@@ -31,10 +31,13 @@
                          :else (do
                                  (swap! app-state update-in [:flipped] merge sha-1)
                                  (swap! app-state update-in [:flipped] merge [r s])
-                                 (js/setTimeout ;;#(clicky r s sha-1)
-                                  #(when (> (count (:flipped @app-state)) 2)
-                                     (swap! app-state update-in [:flipped] empty))
-                                  1500))))}
+                                 ;; this prevents an old timeout hanging around causing cards to flip too soon are when unexpected
+                                 (js/clearTimeout (:timer @app-state))
+                                 (swap! app-state assoc :timer
+                                        (js/setTimeout
+                                         #(when (> (count (:flipped @app-state)) 2)
+                                            (swap! app-state update-in [:flipped] empty))
+                                         1500)))))}
      [:div.flipper
       [:div.front
        [:div.card]]
@@ -57,7 +60,7 @@
 (enable-console-print!)
 
 (defn restart-play []
-  (reset! app-state {:flipped #{} :matched #{} :turns [0]})
+  (reset! app-state {:flipped #{} :matched #{} :timer nil})
   (rum/mount (play-field 20) (.getElementById js/document "table")))
 
 (defn on-js-reload []
